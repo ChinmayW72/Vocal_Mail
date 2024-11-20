@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compose Email</title>
+    <style>
+        /* Google Fonts - Roboto */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+            animation: fadeIn 1.5s;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: bold;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        label {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 1.2rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        textarea {
+            resize: vertical;
+            height: 150px;
+        }
+
+        input[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin-top: 10px;
+            font-size: 1.1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+
+        a {
+            display: block;
+            margin-top: 15px;
+            font-size: 1.1rem;
+            text-decoration: none;
+            color: #4CAF50;
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: #388E3C;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1.5rem;
+                max-width: 90%;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            input[type="submit"] {
+                font-size: 1rem;
+            }
+        }
+
+        /* Fade-in animation */
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Compose Email</h1>
+
+        <form id="compose-form" action="{{ url_for('compose') }}" method="post">
+            <label for="recipient">Recipient:</label>
+            <input type="text" id="recipient" name="recipient" placeholder="Enter recipient's email">
+
+            <label for="subject">Subject:</label>
+            <input type="text" id="subject" name="subject" placeholder="Enter email subject">
+
+            <label for="body">Body:</label>
+            <textarea id="body" name="body" placeholder="Type your email content here"></textarea>
+
+            <input type="submit" value="Send">
+        </form>
+
+        <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+    </div>
+
+    <!-- JavaScript for voice interaction -->
+    <script type="text/javascript">
+        // Function to make the browser speak
+        function speak(text) {
+            return new Promise((resolve) => {
+                var msg = new SpeechSynthesisUtterance(text);
+                msg.onend = resolve;
+                window.speechSynthesis.speak(msg);
+            });
+        }
+
+        // Function to get audio input
+        function askForInput() {
+            return new Promise((resolve, reject) => {
+                var recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'en-US';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+                recognition.start();
+
+                recognition.onresult = function (event) {
+                    const userInput = event.results[0][0].transcript.toLowerCase();
+                    resolve(userInput);
+                };
+
+                recognition.onerror = function (event) {
+                    reject(event.error);
+                };
+            });
+        }
+
+        // Function to replace "at" with "@" in email address and correct input
+        function correctEmailInput(input) {
+            let correctedInput = input.replace(/\sat\s/g, '@').replace(/\sdot\s/g, '.');
+            return correctedInput.replace(/\.$/, ''); // Remove any trailing period
+        }
+
+        // Function to validate email address format
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(String(email).toLowerCase());
+        }
+
+        // Function to handle composing an email via speech
+        async function composeEmail() {
+            await speak("Do you want to compose a mail or go back to the dashboard?");
+            try {
+                const userInput = await askForInput();
+                if (userInput.includes("dashboard")) {
+                    window.location.href = "{{ url_for('dashboard') }}";
+                } else if (userInput.includes("compose")) {
+                    // Recipient step
+                    await speak("Please say the recipient's email address.");
+                    let recipient = await askForInput();
+
+                    // Replace "at" with "@" and "dot" with "."
+                    recipient = correctEmailInput(recipient);
+
+                    // Validate email format
+                    if (!validateEmail(recipient)) {
+                        await speak("The email address format is invalid. Please provide a valid email address.");
+                        recipient = await askForInput();
+                        recipient = correctEmailInput(recipient);  // Correct again
+                    }
+
+                    await speak(`You said ${recipient}. Is that correct?`);
+                    let confirmRecipient = await askForInput();
+                    if (!confirmRecipient.includes("yes")) {
+                        await speak("Let's try again.");
+                        recipient = await askForInput();
+                        recipient = correctEmailInput(recipient);  // Correct again
+                    }
+
+                    document.getElementById("recipient").value = recipient;
+
+                    // Subject step
+                    await speak("What is the subject of the email?");
+                    const subject = await askForInput();
+                    document.getElementById("subject").value = subject;
+
+                    await speak(`You said ${subject}. Is that correct?`);
+                    let confirmSubject = await askForInput();
+                    if (!confirmSubject.includes("yes")) {
+                        await speak("Let's try again.");
+                        const subject = await askForInput();
+                        document.getElementById("subject").value = subject;
+                    }
+
+                    // Body step
+                    await speak("What do you want to say in the email?");
+                    const body = await askForInput();
+                    document.getElementById("body").value = body;
+
+                    await speak(`You said: ${body}. Is that correct?`);
+                    let confirmBody = await askForInput();
+                    if (!confirmBody.includes("yes")) {
+                        await speak("Let's try again.");
+                        const body = await askForInput();
+                        document.getElementById("body").value = body;
+                    }
+
+                    // Confirm and send the email
+                    await speak("Do you want to send the email?");
+                    let confirmSend = await askForInput();
+                    if (confirmSend.includes("yes")) {
+                        document.getElementById("compose-form").submit();
+                    } else {
+                        await speak("Okay, the email was not sent.");
+                    }
+                }
+            } catch (error) {
+                console.error('Error with speech recognition:', error);
+            }
+        }
+
+        // Start the voice interaction when the page loads
+        window.onload = function() {
+            composeEmail();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        /* Google Fonts - Poppins */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+        @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 2rem 3rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+            max-width: 500px;
+            width: 100%;
+            animation: fadeIn 1.5s;
+            position: relative;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.8rem 1.5rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .btn i {
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            background-color: #388E3C;
+            transform: translateY(-3px);
+        }
+
+        .btn:active {
+            transform: translateY(0px);
+        }
+
+        /* Responsive for smaller screens */
+        @media (max-width: 600px) {
+            .container {
+                padding: 1.5rem;
+                max-width: 90%;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .btn {
+                font-size: 1rem;
+            }
+        }
+
+        /* Fade-in animation */
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dashboard</h1>
+
+        <a href="{{ url_for('compose') }}" class="btn">
+            <i class="fas fa-pencil-alt"></i> Compose Mail
+        </a>
+        <a href="{{ url_for('check_mails') }}" class="btn">
+            <i class="fas fa-envelope-open"></i> Check Mail
+        </a>
+    </div>
+
+    <!-- JavaScript for voice interaction -->
+    <script type="text/javascript">
+        // Function to make the browser speak
+        function speak(text) {
+            return new Promise((resolve) => {
+                var msg = new SpeechSynthesisUtterance(text);
+                msg.onend = resolve;
+                window.speechSynthesis.speak(msg);
+            });
+        }
+
+        // Function to get audio input
+        function askForInput() {
+            return new Promise((resolve, reject) => {
+                var recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'en-US';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+                recognition.start();
+
+                recognition.onresult = function (event) {
+                    const userInput = event.results[0][0].transcript.toLowerCase();
+                    resolve(userInput);
+                };
+
+                recognition.onerror = function (event) {
+                    reject(event.error);
+                };
+            });
+        }
+
+        // Function to handle dashboard voice interaction
+        async function dashboardAssistant() {
+            await speak("Do you want to check mail or compose a mail?");
+            try {
+                const userInput = await askForInput();
+                if (userInput.includes("check")) {
+                    window.location.href = "{{ url_for('check_mails') }}";
+                } else if (userInput.includes("compose")) {
+                    window.location.href = "{{ url_for('compose') }}";
+                } else {
+                    await speak("I didn't catch that. Please say 'check mail' or 'compose mail'.");
+                    dashboardAssistant(); // Restart if not understood
+                }
+            } catch (error) {
+                console.error('Error with speech recognition:', error);
+            }
+        }
+
+        // Start the voice interaction when the page loads
+        window.onload = function() {
+            dashboardAssistant();
+        };
+    </script>
+</body>
+</html>

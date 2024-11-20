@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Read Emails</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .email {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        .email h3 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #007BFF;
+        }
+
+        .email p {
+            margin: 5px 0;
+            color: #555;
+        }
+
+        a {
+            text-decoration: none;
+            color: #007BFF;
+        }
+    </style>
+</head>
+<body>
+    <h1>Emails</h1>
+
+    {% for sender, snippet in email_snippets %}
+        <div class="email">
+            <h3>From: {{ sender }}</h3>
+            <p>{{ snippet }}</p>
+        </div>
+    {% endfor %}
+
+    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+
+    <script type="text/javascript">
+        const emailSnippets = {{ email_snippets | tojson }};
+        let currentIndex = 0;
+
+        // Function to make the browser speak
+        function speak(text) {
+            return new Promise(resolve => {
+                const msg = new SpeechSynthesisUtterance();
+                msg.text = text;
+                msg.onend = resolve;
+                window.speechSynthesis.speak(msg);
+            });
+        }
+
+        // Function to ask for input using speech recognition
+        function askForInput() {
+            return new Promise((resolve, reject) => {
+                const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'en-US';
+                recognition.interimResults = false;
+
+                recognition.onresult = (event) => {
+                    const result = event.results[0][0].transcript.toLowerCase();
+                    resolve(result);
+                };
+
+                recognition.onerror = (event) => {
+                    reject(event.error);
+                };
+
+                recognition.start();
+            });
+        }
+
+        // Read an email and ask if the user wants to continue or go to the dashboard
+        async function readEmails() {
+            if (emailSnippets.length === 0) {
+                await speak("No emails found.");
+                return;
+            }
+
+            for (currentIndex; currentIndex < emailSnippets.length; currentIndex++) {
+                const sender = emailSnippets[currentIndex][0];
+                const snippet = emailSnippets[currentIndex][1];
+                await speak(`Email from ${sender}. Snippet: ${snippet}`);
+
+                await speak("Would you like to continue reading or go back to the dashboard?");
+
+                try {
+                    const userInput = await askForInput();
+                    if (userInput.includes("dashboard")) {
+                        window.location.href = "{{ url_for('dashboard') }}";
+                        break;
+                    } else if (!userInput.includes("read")) {
+                        await speak("Sorry, I didn't understand. I will ask again.");
+                        currentIndex--; // Retry the same email if unclear
+                    }
+                } catch (error) {
+                    await speak("There was an issue with voice recognition. Please try again.");
+                    currentIndex--; // Retry the same email if there's an error
+                }
+            }
+        }
+
+        window.onload = function() {
+            readEmails();
+        };
+    </script>
+</body>
+</html>
